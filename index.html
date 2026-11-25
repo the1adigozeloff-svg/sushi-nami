@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
+    /* v2-FIXED: scroll bug removed */
     :root {
       --bg-base: #0d0d0d;
       --card-bg: rgba(18, 18, 18, 0.84);
@@ -26,7 +27,7 @@
       background-color: var(--bg-base);
       color: var(--text-main);
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-      overflow-x: hidden;
+      overscroll-behavior-y: none;
     }
 
     /* Sushi Nami-nin öz orijinal qara taxta-lövhə arxa fon teksturası */
@@ -77,6 +78,7 @@
       flex-direction: column;
       position: relative;
       z-index: 1;
+      overflow-x: clip;
     }
 
     .welcome-topbar {
@@ -310,6 +312,7 @@
     .search-input::placeholder { color: #8c8c8c; }
 
     .cats-bar {
+      position: relative;
       display: flex;
       align-items: center;
       gap: 8px;
@@ -349,7 +352,7 @@
       color: #fff;
     }
 
-    .menu-container { padding: 8px 12px 24px; }
+    .menu-container { padding: 8px 12px 24px; overflow-x: clip; }
 
     .section-block { margin-bottom: 18px; scroll-margin-top: 125px; }
 
@@ -1012,26 +1015,40 @@
       }).join("");
     }
 
+    let isJumping = false;
+    let jumpTimer = null;
+
     function highlightCatPill(catId) {
       if (activeCat === catId) return;
       activeCat = catId;
+      const bar = document.getElementById("catsBar");
       document.querySelectorAll(".cat-pill").forEach(btn => {
         const isAct = btn.getAttribute("data-cat") === catId;
         btn.classList.toggle("active", isAct);
-        if (isAct) btn.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+        if (isAct && bar) {
+          const targetLeft = btn.offsetLeft - (bar.clientWidth / 2) + (btn.offsetWidth / 2);
+          bar.scrollTo({ left: Math.max(0, targetLeft), behavior: "smooth" });
+        }
       });
     }
 
     function jumpToCategory(catId) {
+      isJumping = true;
+      clearTimeout(jumpTimer);
       document.getElementById("searchInput").value = "";
       renderMenu();
       highlightCatPill(catId);
       const el = document.getElementById(catSlug(catId));
-      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+      if (el) {
+        const headerH = document.querySelector(".sticky-header").offsetHeight || 120;
+        const y = el.getBoundingClientRect().top + window.scrollY - headerH - 6;
+        window.scrollTo({ top: Math.max(0, y), behavior: "smooth" });
+      }
+      jumpTimer = setTimeout(() => { isJumping = false; }, 650);
     }
 
     window.addEventListener("scroll", () => {
-      if (document.getElementById("menuView").style.display !== "block") return;
+      if (document.getElementById("menuView").style.display !== "block" || isJumping) return;
       if (scrollTicking) return;
       scrollTicking = true;
       requestAnimationFrame(() => {
